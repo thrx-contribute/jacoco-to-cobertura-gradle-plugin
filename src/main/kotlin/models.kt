@@ -17,6 +17,13 @@ class Cobertura {
 
         @field:Attribute(name = "complexity", required = false)
         var complexity: Double = 0.0
+
+        @field:Attribute(name = "lines", required = false)
+        var linesAttribute: Double = 0.0
+
+        @field:Attribute(name = "lines-covered", required = false)
+        var linesCovered: Double = 0.0
+
     }
 
     @Root(strict = false, name = "coverage")
@@ -36,6 +43,8 @@ class Cobertura {
             lineRate = j.lineRate()
             branchRate = j.branchRate()
             complexity = j.complexity()
+            linesAttribute = packages.sumOf { it.linesAttribute }
+            linesCovered = packages.sumOf { it.linesCovered }
         }
     }
 
@@ -52,6 +61,8 @@ class Cobertura {
             lineRate = p.lineRate()
             branchRate = p.branchRate()
             complexity = p.complexity()
+            linesAttribute = classes.sumOf { it.linesAttribute }
+            linesCovered = classes.sumOf { it.linesCovered }
         }
     }
 
@@ -71,6 +82,8 @@ class Cobertura {
             lineRate = c.lineRate()
             branchRate = c.branchRate()
             complexity = c.complexity()
+            linesAttribute = methods.sumOf { it.linesAttribute }
+            linesCovered = methods.sumOf { it.linesCovered }
         }
     }
 
@@ -90,6 +103,15 @@ class Cobertura {
             lineRate = m.lineRate()
             branchRate = m.branchRate()
             complexity = m.complexity()
+            linesAttribute = lines.size.toDouble()
+            linesCovered = lines.count { it.hits > 0 }.toDouble()
+            System.out.println("Method: $name - $signature")
+            System.out.println("lineRate: $lineRate")
+            System.out.println("branchRate: $branchRate")
+            System.out.println("complexity: $complexity")
+            System.out.println("linesAttribute: $linesAttribute")
+            System.out.println("linesCovered: $linesCovered")
+
         }
     }
 
@@ -147,6 +169,7 @@ class Cobertura {
                 jPack: Jacoco.PackageElement,
                 jSource: String?
         ): List<Jacoco.Line> {
+            System.out.println("linesForMethod: ${jMethod.name} - ${jMethod.line} - ${jPack.name} - ${jSource}")
             return if (jSource == null) emptyList()
             else {
                 val currentMethodLine = jMethod.line ?: 0
@@ -154,6 +177,7 @@ class Cobertura {
                         .filter { it.name == jSource }
                         .flatMap { it.lines }
                         .filter { it.nr >= currentMethodLine }
+//                        .subList(0, (jMethod.counters.firstOrNull { it.type == "LINE" }?.missed ?: 0) + (jMethod.counters.firstOrNull(){ it.type == "LINE" }?.covered ?: 0)) // on garde que les lignes non couvertes
 
                 val packMethods = jPack.classes
                         .filter { it.sourcefilename == jSource }
@@ -162,8 +186,12 @@ class Cobertura {
                         .associateBy({ it.name!! }, { it.line!! })
                         .filterValues { it > currentMethodLine } // on garde que les methodes avec un numero de ligne supperieur
 
+                System.out.println("packMethods: ")
+                packMethods.forEach(System.out::println)
                 val nextMethodLine = packMethods.minByOrNull { it.value }?.value ?: Int.MAX_VALUE
+                System.out.println("nextMethodLine: $nextMethodLine")
                 return sourceLines.filter { it.nr < nextMethodLine }
+                //return sourceLines
             }
         }
     }
